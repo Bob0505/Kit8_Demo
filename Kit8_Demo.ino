@@ -10,6 +10,14 @@
 #include "SFE_BMP180.h"
 //https://github.com/wemos/WEMOS_SHT3x_Arduino_Library.git
 #include "WEMOS_SHT3X.h"
+// https://github.com/adafruit/DHT-sensor-library
+#include <DHT.h>
+#include <DHT_U.h>
+
+//https://github.com/JChristensen/Timer
+#include "Timer.h"
+#include "basic.h"
+#define SERIAL_BAUD 74880
 
 typedef enum {
   RET_SUCCESS = 0,
@@ -27,6 +35,8 @@ typedef enum {
 const int SDA_PIN = 4;		/* GPIO4	D2 */
 const int SCL_PIN = 5;		/* GPIO5	D1 */
 const int RST_OLED = 16;	/* GPIO16	D0 */
+const int DHT_PIN_A = 0;	/* GPIO0	D3 */
+
 /* Module Pin define - */
 
 /* Module class define + */
@@ -34,6 +44,9 @@ OLED oled_disp(SDA_PIN, SCL_PIN);
 Adafruit_CCS811 ccs;
 SFE_BMP180 bmp180;
 SHT3X sht30(0x44);
+DHT_Unified DHT_A(DHT_PIN_A, DHT22);	// DHT 22 (AM2302)
+
+Timer Tasks;
 /* Module class define - */
 
 /* Module DataStruct + */
@@ -58,8 +71,15 @@ struct BMP180_struct {
 
 } BMP180_Data;
 
-/* Module DataStruct - */
+struct DHT22_struct {
+	uint8	Status;
+	uint32	min_delay_ms;
+	float	Temp;
+	float	Humi;
+} DHT22_Data;
 
+/* Module DataStruct - */
+#ifdef	EN_I2C_SCAN
 void I2CScan(void)
 {
 	byte error, address;
@@ -106,11 +126,12 @@ void I2CScan(void)
 		Serial.println("done\n");
 	*/
 }
+#endif
 
 void basic_setup(void)
 {
 	pinMode(RST_OLED, OUTPUT);
-	Serial.begin(74880);
+	Serial.begin(SERIAL_BAUD);
 	Serial.println("Serial init OK!!!");
 	Wire.begin();
 	Serial.println("Wire init OK!!!");
@@ -209,17 +230,17 @@ void oled_setup(void)
 	showColumn();
 	showRow();
 
-	oled_disp.print("Bob" , 1, 2);
-	oled_disp.print("Kara", 2, 5);
-	delay(1000);
+	oled_disp.print((char*)"Bob" , 1, 2);
+	oled_disp.print((char*)"Kara", 2, 5);
+	delay(500);
 
 	// Test display OFF
 	oled_disp.off();
-	delay(300);
+	delay(250);
 
 	// Test display ON
 	oled_disp.on();
-	delay(1000);
+	delay(600);
 
 	oled_disp.clear();
 }
@@ -264,12 +285,38 @@ void BMP180_setup(void)
 	}
 }
 
-void setup()
+void DHT22_setup(DHT_Unified dht)
 {
-	basic_setup();
-	oled_setup();
-	ccs_setup();
-	BMP180_setup();
+	// Initialize device.
+	dht.begin();
+	Serial.println("DHT22 Unified Sensor Example");
+	// Print temperature sensor details.
+	sensor_t sensor;
+	dht.temperature().getSensor(&sensor);
+	Serial.println("------------------------------------");
+	Serial.println("Temperature");
+	Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+	Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+	Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+	Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" *C");
+	Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" *C");
+	Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" *C");  
+	Serial.println("------------------------------------");
+	// Print humidity sensor details.
+	dht.humidity().getSensor(&sensor);
+	Serial.println("------------------------------------");
+	Serial.println("Humidity");
+	Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+	Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+	Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+	Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println("%");
+	Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println("%");
+	Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println("%");  
+	Serial.println("------------------------------------");
+	// Set delay between sensor readings based on sensor details.
+	DHT22_Data.min_delay_ms = sensor.min_delay / 1000;
+	Serial.print  ("DHT22_Data.min_delay_ms:   "); Serial.println(DHT22_Data.min_delay_ms);
+	Serial.println("------------------------------------");
 }
 
 void ccs_loop(void)
@@ -334,8 +381,58 @@ void sht30_loop(void)
 	else
 	{
 		Serial.println("Error!");
-		oled_disp.print("Error!", 2);
+		oled_disp.print((char*)"Error!", 2);
 	}
+}
+
+void DHT22_loop(DHT_Unified dht, float* temp, float* humi)
+{
+	//RET_STATUS Status = RET_SUCCESS;
+	// Delay between measurements.
+	//delay(DHT22_Data.min_delay_ms);
+
+	// Get temperature event and print its value.
+	sensors_event_t event;
+	dht.temperature().getEvent(&event);
+	if (isnan(event.temperature))
+	{
+		Serial.println("Error reading temperature!");
+		//SET_BIT(Status, b_RET_DHT22_TEMP_ERROR);
+		//Status|= (1 << b_RET_DHT22_TEMP_ERROR);
+	}
+	else {
+		//Serial.print("Temperature: ");
+		//Serial.print("Temp: ");
+		//Serial.print(event.temperature);
+		//Serial.println(" *C");
+		*temp = event.temperature;
+	}
+	// Get humidity event and print its value.
+	dht.humidity().getEvent(&event);
+	if (isnan(event.relative_humidity))
+	{
+		Serial.println("Error reading humidity!");
+		//SET_BIT(Status, b_RET_DHT22_HUMI_ERROR);
+		//Status|= (1 << b_RET_DHT22_HUMI_ERROR);
+	}
+	else
+	{
+		//Serial.print("Humidity: ");
+		//Serial.print("Humi: ");
+		//Serial.print(event.relative_humidity);
+		//Serial.println("%");
+		*humi = event.relative_humidity;
+	}
+
+	//return Status;
+}
+
+void DHT22_loop(void)
+{
+	Serial.println("[A]");
+	DHT22_loop(DHT_A, &DHT22_Data.Temp, &DHT22_Data.Humi);
+	Serial.print("  Temp: ");	Serial.print(DHT22_Data.Temp);	Serial.println(" *C");
+	Serial.print("  Humi: ");	Serial.print(DHT22_Data.Humi);	Serial.println(" %");
 }
 
 void showdata(void)
@@ -350,7 +447,9 @@ void showdata(void)
 	*/
 
 	sprintf(Tempstr, "");
-	oled_disp.print("I2C:");
+#ifdef	EN_I2C_SCAN
+/* Show I2C device address + */
+	oled_disp.print((char*)"I2C:");
 	for(uint8 idx=0;I2CAdr[idx]!=0x00;idx++)
 	{
 		sprintf(i2cadr, " %x", I2CAdr[idx]);
@@ -358,24 +457,37 @@ void showdata(void)
 	}
 	Serial.println(Tempstr);
 	oled_disp.print(Tempstr, 0, I2C_TAITLE_LEN);
-
-	sprintf(Tempstr, "BT:%dC ", (int32)BMP180_Data.Temperature);
+/* Show I2C device address - */
+#else
+/* Show DHT22  data + */
+	sprintf(Tempstr, "DT:%dC     H:%d%", (int32)DHT22_Data.Temp, (int32)DHT22_Data.Humi);
+	Serial.println(Tempstr);
+	oled_disp.print(Tempstr);
+/* Show DHT22 data - */
+#endif
+/* Show SHT30 data + */
+	sprintf(Tempstr, "ST:%dC %dF H:%d%", (int32)sht30.cTemp, (int32)sht30.fTemp, (int32)sht30.humidity);
 	Serial.println(Tempstr);
 	oled_disp.print(Tempstr, 1);
+/* Show SHT30  data - */
 
-	sprintf(Tempstr, " P:%dhPa A:%dm", (int32)BMP180_Data.Pressure, (int32)BMP180_Data.Altitude);
+/* Show BMP180 data + */
+	sprintf(Tempstr, "BT:%dC ", (int32)BMP180_Data.Temperature);
 	Serial.println(Tempstr);
 	oled_disp.print(Tempstr, 2);
 
-	sprintf(Tempstr, "ST:%dC %dF H:%d", (int32)sht30.cTemp, (int32)sht30.fTemp, (int32)sht30.humidity);
+	sprintf(Tempstr, " P:%dhPa A:%dm", (int32)BMP180_Data.Pressure, (int32)BMP180_Data.Altitude);
 	Serial.println(Tempstr);
 	oled_disp.print(Tempstr, 3);
+/* Show BMP180 data - */
+
 }
 
-void loop()
+void task_1s(void)
 {
+#ifdef	EN_I2C_SCAN
 	I2CScan();
-
+#endif
 	if(CCS811_Data.Status == RET_SUCCESS)
 		ccs_loop();
 
@@ -383,8 +495,24 @@ void loop()
 		bmp180_loop();
 
 	sht30_loop();
+	DHT22_loop();
 	showdata();
 
 	Serial.println("-------");
-	delay(1000);
+}
+
+void setup()
+{
+	basic_setup();
+	oled_setup();
+	ccs_setup();
+	BMP180_setup();
+	DHT22_setup(DHT_A);
+
+	Tasks.every(1*1000, task_1s);
+}
+
+void loop()
+{
+	Tasks.update();
 }
