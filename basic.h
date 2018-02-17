@@ -64,5 +64,27 @@ struct DHT22_struct {
 
 /* Module DataStruct - */
 
+/* Wifi AP Information + */
+//=====================================
+#define SSID	"AP_Name"
+#define PASS	"AP_Password"
+//=====================================
+#define HOST	"api.thingspeak.com" // ThingSpeak IP Address: 184.106.153.149
+#define PORT	80
+
+// using GET to send data
+// GET /update?key=[THINGSPEAK_KEY]&field1=[data 1]&filed2=[data 2]...;
+String GET = "GET /update?key=Write_API_Key";
+/* Wifi AP Information - */
+
+struct IoT_struct {
+	int32	DHT22_Temp;
+	int32	DHT22_Humi;
+	int32	SHT30_Temp;
+	int32	SHT30_Humi;
+	int32	BMP180_Temp;
+	int32	BMP180_Pres;
+} IoT_Data;
+
 
 #endif	/*_BASIC_H_*/

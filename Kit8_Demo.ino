@@ -14,6 +14,7 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
+#include <ESP8266WiFi.h>
 //https://github.com/JChristensen/Timer
 #include "Timer.h"
 #include "basic.h"
@@ -181,17 +182,14 @@ void oled_setup(void)
 
 	oled_disp.print((char*)"Bob" , 1, 2);
 	oled_disp.print((char*)"Kara", 2, 5);
-	delay(500);
+	delay(250);
 
 	// Test display OFF
 	oled_disp.off();
-	delay(250);
+	delay(100);
 
 	// Test display ON
 	oled_disp.on();
-	delay(600);
-
-	oled_disp.clear();
 }
 
 void ccs_setup(void)
@@ -268,6 +266,29 @@ void DHT22_setup(DHT_Unified dht)
 	Serial.println("------------------------------------");
 }
 
+void Wifi_setup(void)
+{
+    // Connecting to a WiFi network
+    Serial.print("Connect to ");
+    Serial.println( SSID );
+    WiFi.begin( SSID, PASS );
+
+    // wait connect WiFi SSID
+    while( WiFi.status() != WL_CONNECTED )
+    {
+        delay(500);
+        Serial.print( "." );
+    }
+    Serial.println( "" );
+
+    Serial.println( "WiFi connected" );
+    Serial.println( "IP address: " );
+    Serial.println( WiFi.localIP() );
+
+    oled_disp.print((char*)"WiFi connected", 3, 1);
+    delay(1000);
+}
+
 void ccs_loop(void)
 {
 	char Tempstr[40];
@@ -299,33 +320,30 @@ void ccs_loop(void)
 
 void bmp180_loop(void)
 {
-	char Tempstr[50];
+	//char Tempstr[50];
 
 	// Get a new pressure reading:
 	BMP180_Data.Pressure = getPressure();
 
 	// Show the relative altitude difference between
 	// the new reading and the baseline reading:
-	sprintf(Tempstr, "Temperature: %d, Pressure: %d hPa", (int32)BMP180_Data.Temperature, (int32)BMP180_Data.Pressure);
-	Serial.println(Tempstr);
+	//sprintf(Tempstr, "Temperature: %d, Pressure: %d hPa", (int32)BMP180_Data.Temperature, (int32)BMP180_Data.Pressure);
+	//Serial.println(Tempstr);
 
 	BMP180_Data.Altitude = bmp180.altitude(BMP180_Data.Pressure, BMP180_Data.Baseline);
-	sprintf(Tempstr, "Relative altitude: %d meters (%d feet).", (int32)BMP180_Data.Altitude, (int32)(3.28084*BMP180_Data.Altitude));
-	Serial.println(Tempstr);
+	//sprintf(Tempstr, "Relative altitude: %d meters (%d feet).", (int32)BMP180_Data.Altitude, (int32)(3.28084*BMP180_Data.Altitude));
+	//Serial.println(Tempstr);
 }
 
 void sht30_loop(void)
 {
-	char Tempstr[120];
+	//char Tempstr[120];
 
 	if(sht30.get()==0)
 	{
-		Serial.print("Temperature in Celsius : ");
-		Serial.println();
-
-		sprintf(Tempstr, "Temperature in Celsius: %f, Temperature in Fahrenheit: %f, Relative Humidity: %f",
-							sht30.cTemp, sht30.fTemp, sht30.humidity);
-		Serial.println(Tempstr);
+		//sprintf(Tempstr, "Temperature in Celsius: %f, Temperature in Fahrenheit: %f, Relative Humidity: %f",
+		//					sht30.cTemp, sht30.fTemp, sht30.humidity);
+		//Serial.println(Tempstr);
 	}
 	else
 	{
@@ -378,10 +396,52 @@ void DHT22_loop(DHT_Unified dht, float* temp, float* humi)
 
 void DHT22_loop(void)
 {
-	Serial.println("[A]");
+	//Serial.println("[A]");
 	DHT22_loop(DHT_A, &DHT22_Data.Temp, &DHT22_Data.Humi);
-	Serial.print("  Temp: ");	Serial.print(DHT22_Data.Temp);	Serial.println(" *C");
-	Serial.print("  Humi: ");	Serial.print(DHT22_Data.Humi);	Serial.println(" %");
+	//Serial.print("  Temp: ");	Serial.print(DHT22_Data.Temp);	Serial.println(" *C");
+	//Serial.print("  Humi: ");	Serial.print(DHT22_Data.Humi);	Serial.println(" %");
+}
+
+void UpdateIoTData(void)
+{
+	IoT_Data.DHT22_Temp 	= (int32)DHT22_Data.Temp;
+	IoT_Data.DHT22_Humi 	= (int32)DHT22_Data.Humi;
+	IoT_Data.SHT30_Temp		= (int32)sht30.cTemp;
+	IoT_Data.SHT30_Humi		= (int32)sht30.fTemp;
+	IoT_Data.BMP180_Temp	= (int32)BMP180_Data.Temperature;
+	IoT_Data.BMP180_Pres	= (int32)BMP180_Data.Pressure;
+}
+
+void wifi_loop(void)
+{
+	//RET_STATUS Status = RET_SUCCESS;
+
+	// setting ESP8266 as Client
+	WiFiClient client;
+	if( !client.connect( HOST, PORT ) )
+	{
+		Serial.println( "connection failed" );
+		//SET_BIT(Status, b_RET_WIFI_HUMI_ERROR);
+		//Status|= (1 << b_RET_WIFI_CNT_ERROR);
+	}
+	else
+	{
+		String getStr = GET +   "&field1=" + String(IoT_Data.DHT22_Temp) +
+								"&field2=" + String(IoT_Data.DHT22_Humi) +
+								"&field3=" + String((float)IoT_Data.SHT30_Temp) +
+								"&field4=" + String((float)IoT_Data.SHT30_Humi) +
+								"&field5=" + String(IoT_Data.BMP180_Temp) +
+								"&field6=" + String(IoT_Data.BMP180_Pres) +
+								" HTTP/1.1\r\n";;
+		client.print( getStr );
+		client.print( "Host: api.thingspeak.com\n" );
+		client.print( "Connection: close\r\n\r\n" );
+
+		delay(10);
+		client.stop();
+	}
+
+	//return Status;
 }
 
 void showdata(void)
@@ -450,6 +510,22 @@ void task_1s(void)
 	Serial.println("-------");
 }
 
+void task_30s(void)
+{
+	UpdateIoTData();
+	wifi_loop();
+}
+
+void task_setup(void)
+{
+	Tasks.every(1*1000,  task_1s);
+	Tasks.every(30*1000, task_30s);
+
+	//do once
+	task_1s();
+	task_30s();
+}
+
 void setup()
 {
 	basic_setup();
@@ -457,8 +533,9 @@ void setup()
 	ccs_setup();
 	BMP180_setup();
 	DHT22_setup(DHT_A);
+	Wifi_setup();
 
-	Tasks.every(1*1000, task_1s);
+	task_setup();
 }
 
 void loop()
