@@ -404,12 +404,12 @@ void DHT22_loop(void)
 
 void UpdateIoTData(void)
 {
-	IoT_Data.DHT22_Temp 	= (int32)DHT22_Data.Temp;
-	IoT_Data.DHT22_Humi 	= (int32)DHT22_Data.Humi;
-	IoT_Data.SHT30_Temp		= (int32)sht30.cTemp;
-	IoT_Data.SHT30_Humi		= (int32)sht30.fTemp;
-	IoT_Data.BMP180_Temp	= (int32)BMP180_Data.Temperature;
-	IoT_Data.BMP180_Pres	= (int32)BMP180_Data.Pressure;
+	IoT_Data.DHT22_Temp 	= (float)DHT22_Data.Temp;
+	IoT_Data.DHT22_Humi 	= (float)DHT22_Data.Humi;
+	IoT_Data.SHT30_Temp		= (float)sht30.cTemp;
+	IoT_Data.SHT30_Humi		= (float)sht30.fTemp;
+	IoT_Data.BMP180_Temp	= (float)BMP180_Data.Temperature;
+	IoT_Data.BMP180_Pres	= (float)BMP180_Data.Pressure;
 }
 
 void wifi_loop(void)
@@ -428,8 +428,8 @@ void wifi_loop(void)
 	{
 		String getStr = GET +   "&field1=" + String(IoT_Data.DHT22_Temp) +
 								"&field2=" + String(IoT_Data.DHT22_Humi) +
-								"&field3=" + String((float)IoT_Data.SHT30_Temp) +
-								"&field4=" + String((float)IoT_Data.SHT30_Humi) +
+								"&field3=" + String(IoT_Data.SHT30_Temp) +
+								"&field4=" + String(IoT_Data.SHT30_Humi) +
 								"&field5=" + String(IoT_Data.BMP180_Temp) +
 								"&field6=" + String(IoT_Data.BMP180_Pres) +
 								" HTTP/1.1\r\n";;

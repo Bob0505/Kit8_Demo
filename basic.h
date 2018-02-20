@@ -78,12 +78,12 @@ String GET = "GET /update?key=Write_API_Key";
 /* Wifi AP Information - */
 
 struct IoT_struct {
-	int32	DHT22_Temp;
-	int32	DHT22_Humi;
-	int32	SHT30_Temp;
-	int32	SHT30_Humi;
-	int32	BMP180_Temp;
-	int32	BMP180_Pres;
+	float	DHT22_Temp;
+	float	DHT22_Humi;
+	float	SHT30_Temp;
+	float	SHT30_Humi;
+	float	BMP180_Temp;
+	float	BMP180_Pres;
 } IoT_Data;
 
 
