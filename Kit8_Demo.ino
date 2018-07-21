@@ -54,7 +54,7 @@ void I2CScan(void)
 			/*
 			Serial.print("I2C device found at address 0x");
 			if (address<16)
-				Serial.print("0");
+			Serial.print("0");
 			Serial.print(address, HEX); Serial.println("  !");
 			*/
 			I2CAdr[nDevices] = address;
@@ -116,59 +116,59 @@ void showRow(void)
 
 double getPressure()
 {
-  char status;
+	char status;
 
-  // You must first get a temperature measurement to perform a pressure reading.
+	// You must first get a temperature measurement to perform a pressure reading.
 
-  // Start a temperature measurement:
-  // If request is successful, the number of ms to wait is returned.
-  // If request is unsuccessful, 0 is returned.
+	// Start a temperature measurement:
+	// If request is successful, the number of ms to wait is returned.
+	// If request is unsuccessful, 0 is returned.
 
-  status = bmp180.startTemperature();
-  if (status != 0)
-  {
-    // Wait for the measurement to complete:
+	status = bmp180.startTemperature();
+	if (status != 0)
+	{
+		// Wait for the measurement to complete:
 
-    delay(status);
+		delay(status);
 
-    // Retrieve the completed temperature measurement:
-    // Note that the measurement is stored in the variable T.
-    // Use '&T' to provide the address of T to the function.
-    // Function returns 1 if successful, 0 if failure.
+		// Retrieve the completed temperature measurement:
+		// Note that the measurement is stored in the variable T.
+		// Use '&T' to provide the address of T to the function.
+		// Function returns 1 if successful, 0 if failure.
 
-    status = bmp180.getTemperature(BMP180_Data.Temperature);
-    if (status != 0)
-    {
-      // Start a pressure measurement:
-      // The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
-      // If request is successful, the number of ms to wait is returned.
-      // If request is unsuccessful, 0 is returned.
+		status = bmp180.getTemperature(BMP180_Data.Temperature);
+		if (status != 0)
+		{
+			// Start a pressure measurement:
+			// The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
+			// If request is successful, the number of ms to wait is returned.
+			// If request is unsuccessful, 0 is returned.
 
-      status = bmp180.startPressure(3);
-      if (status != 0)
-      {
-        // Wait for the measurement to complete:
-        delay(status);
+			status = bmp180.startPressure(3);
+			if (status != 0)
+			{
+				// Wait for the measurement to complete:
+				delay(status);
 
-        // Retrieve the completed pressure measurement:
-        // Note that the measurement is stored in the variable P.
-        // Use '&P' to provide the address of P.
-        // Note also that the function requires the previous temperature measurement (T).
-        // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
-        // Function returns 1 if successful, 0 if failure.
+				// Retrieve the completed pressure measurement:
+				// Note that the measurement is stored in the variable P.
+				// Use '&P' to provide the address of P.
+				// Note also that the function requires the previous temperature measurement (T).
+				// (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
+				// Function returns 1 if successful, 0 if failure.
 
-        status = bmp180.getPressure(BMP180_Data.Pressure, BMP180_Data.Temperature);
-        if (status != 0)
-        {
-          return(BMP180_Data.Pressure);
-        }
-        else Serial.println("error retrieving pressure measurement\n");
-      }
-      else Serial.println("error starting pressure measurement\n");
-    }
-    else Serial.println("error retrieving temperature measurement\n");
-  }
-  else Serial.println("error starting temperature measurement\n");
+				status = bmp180.getPressure(BMP180_Data.Pressure, BMP180_Data.Temperature);
+				if (status != 0)
+				{
+					return(BMP180_Data.Pressure);
+				}
+				else Serial.println("error retrieving pressure measurement\n");
+			}
+			else Serial.println("error starting pressure measurement\n");
+		}
+		else Serial.println("error retrieving temperature measurement\n");
+	}
+	else Serial.println("error starting temperature measurement\n");
 }
 
 void oled_setup(void)
@@ -185,11 +185,11 @@ void oled_setup(void)
 	delay(250);
 
 	// Test display OFF
-	oled_disp.off();
-	delay(100);
+	//oled_disp.off();
+	//delay(100);
 
 	// Test display ON
-	oled_disp.on();
+	//oled_disp.on();
 }
 
 void ccs_setup(void)
@@ -268,25 +268,44 @@ void DHT22_setup(DHT_Unified dht)
 
 void Wifi_setup(void)
 {
-    // Connecting to a WiFi network
-    Serial.print("Connect to ");
-    Serial.println( SSID );
-    WiFi.begin( SSID, PASS );
+	uint8 timeout_cnt = 0;
+	uint16 retry_dly_ms = 500;
 
-    // wait connect WiFi SSID
-    while( WiFi.status() != WL_CONNECTED )
-    {
-        delay(500);
-        Serial.print( "." );
-    }
-    Serial.println( "" );
+	// Connecting to a WiFi network
+	Serial.print("Connect to ");
+	Serial.println( SSID );
+	WiFi.begin( SSID, PASS );
 
-    Serial.println( "WiFi connected" );
-    Serial.println( "IP address: " );
-    Serial.println( WiFi.localIP() );
+	// wait connect WiFi SSID
+	while( !WifiConnecred && (timeout_cnt <= (10*1000/retry_dly_ms)) )
+	{
+		if((WiFi.status() == WL_CONNECTED))
+		{
+			WifiConnecred = 1;
+		}
+		else
+		{
+			WifiConnecred = 0;
+			delay(retry_dly_ms);
+			Serial.print( "." );
+			oled_disp.print((char*)".", 3, timeout_cnt/2);
+			timeout_cnt++;
+		}
+	}
 
-    oled_disp.print((char*)"WiFi connected", 3, 1);
-    delay(1000);
+	if(WifiConnecred)
+	{
+		Serial.println( "\nWiFi connected" );
+		Serial.println( "IP address: " );
+		Serial.println( WiFi.localIP() );
+		oled_disp.print((char*)"WiFi connected", 3, 1);
+	}
+	else
+	{
+		Serial.println( "\nWiFi disconnected" );
+		oled_disp.print((char*)"WiFi discnted!", 3, 1);
+	}
+	delay(500);
 }
 
 void ccs_loop(void)
@@ -306,7 +325,7 @@ void ccs_loop(void)
 			Serial.print("TVOC: ");	Serial.print(CCS811_Data.TVOC);		Serial.println("ppb, ");
 
 			sprintf(Tempstr, "Temp: %02d, CO2: %04dppm, TVOC: %03dppb\n",
-						(uint16)CCS811_Data.Temp, (uint16)CCS811_Data.CO2, (uint16)CCS811_Data.TVOC);
+					(uint16)CCS811_Data.Temp, (uint16)CCS811_Data.CO2, (uint16)CCS811_Data.TVOC);
 
 			Serial.println(Tempstr);
 		}
@@ -446,16 +465,10 @@ void wifi_loop(void)
 
 void showdata(void)
 {
-	char i2cadr[3], Tempstr[20];
+	char i2cadr[3], Tempstr[3][20]={0x00};
 
 	oled_disp.clear();
-	/*
-	for(uint8 idx_R=0;idx_R<0x04;idx_R++)
-		//for(uint8 idx_C=0;idx_C<0x10;idx_C++)
-		oled_disp.print("                ", idx_R);
-	*/
 
-	sprintf(Tempstr, "");
 #ifdef	EN_I2C_SCAN
 /* Show I2C device address + */
 	oled_disp.print((char*)"I2C:");
@@ -469,27 +482,33 @@ void showdata(void)
 /* Show I2C device address - */
 #else
 /* Show DHT22  data + */
-	sprintf(Tempstr, "DT:%dC     H:%d%", (int32)DHT22_Data.Temp, (int32)DHT22_Data.Humi);
-	Serial.println(Tempstr);
-	oled_disp.print(Tempstr);
+	sprintf(Tempstr[0], "DT:%dC     H:%d%", (int32)DHT22_Data.Temp, (int32)DHT22_Data.Humi);
+	Serial.println(Tempstr[0]);
 /* Show DHT22 data - */
 #endif
 /* Show SHT30 data + */
-	sprintf(Tempstr, "ST:%dC %dF H:%d%", (int32)sht30.cTemp, (int32)sht30.fTemp, (int32)sht30.humidity);
-	Serial.println(Tempstr);
-	oled_disp.print(Tempstr, 1);
+	sprintf(Tempstr[1], "ST:%dC %dF H:%d%", (int32)sht30.cTemp, (int32)sht30.fTemp, (int32)sht30.humidity);
+	Serial.println(Tempstr[1]);
 /* Show SHT30  data - */
 
 /* Show BMP180 data + */
-	sprintf(Tempstr, "BT:%dC ", (int32)BMP180_Data.Temperature);
-	Serial.println(Tempstr);
-	oled_disp.print(Tempstr, 2);
+	sprintf(Tempstr[2], "BT:%dC ", (int32)BMP180_Data.Temperature);
+	Serial.println(Tempstr[2]);
 
-	sprintf(Tempstr, " P:%dhPa A:%dm", (int32)BMP180_Data.Pressure, (int32)BMP180_Data.Altitude);
-	Serial.println(Tempstr);
-	oled_disp.print(Tempstr, 3);
+	sprintf(Tempstr[3], " P:%dhPa A:%dm", (int32)BMP180_Data.Pressure, (int32)BMP180_Data.Altitude);
+	Serial.println(Tempstr[3]);
 /* Show BMP180 data - */
 
+	digitalWrite(D6, HIGH);   // turn the LED on (HIGH is the voltage level)
+	//oled_disp.off();
+	//delay(100);
+	oled_disp.print(Tempstr[0], 0);
+	oled_disp.print(Tempstr[1], 1);
+	oled_disp.print(Tempstr[2], 2);
+	oled_disp.print(Tempstr[3], 3);
+	//delay(1000);
+	//oled_disp.on();
+	digitalWrite(D6, LOW);    // turn the LED off by making the voltage LOW
 }
 
 void task_1s(void)
@@ -513,7 +532,10 @@ void task_1s(void)
 void task_30s(void)
 {
 	UpdateIoTData();
-	wifi_loop();
+	if(WifiConnecred)
+	{
+		wifi_loop();
+	}
 }
 
 void task_setup(void)
@@ -528,6 +550,7 @@ void task_setup(void)
 
 void setup()
 {
+	pinMode(D6, OUTPUT);
 	basic_setup();
 	oled_setup();
 	ccs_setup();
@@ -536,6 +559,7 @@ void setup()
 	Wifi_setup();
 
 	task_setup();
+	Wire.setClock(400 * 1000);
 }
 
 void loop()

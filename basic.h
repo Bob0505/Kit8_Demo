@@ -24,7 +24,8 @@ typedef enum {
 //} RET_STATUS_bits;
 //typedef uint16_t RET_STATUS;
 
-#define SERIAL_BAUD 74880
+#define SERIAL_BAUD 115200
+//#define SERIAL_BAUD 2000000
 
 /* Module Pin define + */
 const int SDA_PIN = 4;		/* GPIO4	D2 */
@@ -37,7 +38,8 @@ const int DHT_PIN_A = 0;	/* GPIO0	D3 */
 #define I2C_TAITLE_LEN 4
 #define NOW_TEMP 26.0
 
-uint8 I2CAdr[5];
+static uint8 WifiConnecred;
+//uint8 I2CAdr[5];
 
 struct CCS811_struct {
 	uint8    Status;
